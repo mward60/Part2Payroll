@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Data;
+using System.Globalization;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace Part2Payroll
@@ -18,14 +20,14 @@ namespace Part2Payroll
             table = new DataTable();
             table.Columns.Add("EmployeeID", typeof(string));
             table.Columns.Add("Name", typeof(string));
-            table.Columns.Add("HoursWorked", typeof(decimal)); // Changed to Decimal
-            table.Columns.Add("Salary", typeof(decimal)); // Changed to Decimal
-            table.Columns.Add("StateTaxRate", typeof(decimal)); // Changed to Decimal
-            table.Columns.Add("FederalTaxRate", typeof(decimal)); // Changed to Decimal
-            table.Columns.Add("YtdState", typeof(decimal)); // Changed to Decimal
-            table.Columns.Add("YtdFederal", typeof(decimal)); // Changed to Decimal
-            table.Columns.Add("YtdTaxTotal", typeof(decimal)); // Changed to Decimal
-            table.Columns.Add("YtdTotal", typeof(decimal)); // Changed to Decimal
+            table.Columns.Add("HoursWorked", typeof(decimal));
+            table.Columns.Add("Salary", typeof(decimal));
+            table.Columns.Add("StateTaxRate", typeof(decimal));
+            table.Columns.Add("FederalTaxRate", typeof(decimal));
+            table.Columns.Add("YtdState", typeof(decimal));
+            table.Columns.Add("YtdFederal", typeof(decimal));
+            table.Columns.Add("YtdTaxTotal", typeof(decimal));
+            table.Columns.Add("YtdTotal", typeof(decimal));
             dataGridView1.DataSource = table;
         }
 
@@ -42,32 +44,43 @@ namespace Part2Payroll
                 return;
             }
 
-            // Get the calculated totals
-            decimal totalAfterTax = decimal.Parse(txtTotalAfterTax.Text, System.Globalization.NumberStyles.Currency);
-            decimal totalTax = decimal.Parse(txtTotalTax.Text, System.Globalization.NumberStyles.Currency);
+            if (!TryParseTotals(out decimal totalAfterTax, out decimal totalTax))
+            {
+                return;
+            }
 
-            table.Rows.Add(
-                txtEmployeeID.Text,
-                txtEmployeeName.Text,
-                decimal.Parse(txtHours.Text),
-                decimal.Parse(txtSalary.Text),
-                decimal.Parse(txtStateTax.Text),
-                decimal.Parse(txtFederalTax.Text),
-                decimal.Parse(txtYtdState.Text),
-                decimal.Parse(txtYtdFederal.Text),
-                totalTax,
-                totalAfterTax);
+            DataRow existingRow = table.Rows.Cast<DataRow>()
+                .FirstOrDefault(row => row["EmployeeID"].ToString() == txtEmployeeID.Text);
+
+            if (existingRow != null)
+            {
+                UpdateExistingEmployee(existingRow, totalAfterTax, totalTax);
+            }
+            else
+            {
+                AddNewEmployee(totalAfterTax, totalTax);
+            }
 
             ClearInputs();
         }
 
         private void bttView_Click(object sender, EventArgs e)
         {
-            int index = dataGridView1.CurrentCell.RowIndex;
-            if (index > -1)
+            if (dataGridView1.CurrentCell == null || dataGridView1.CurrentCell.RowIndex < 0)
             {
-                LoadDataIntoInputs(index);
+                MessageBox.Show("Please select an employee to view.", "Selection Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
+
+            int index = dataGridView1.CurrentCell.RowIndex;
+            LoadDataIntoInputs(index);
+            ClearAdditionalFields();
+        }
+
+        private void ClearAdditionalFields()
+        {
+            txtTotalTax.Clear();
+            txtTotalAfterTax.Clear();
         }
 
         private void bttDelete_Click(object sender, EventArgs e)
@@ -86,33 +99,45 @@ namespace Part2Payroll
 
         private void CalculateTotal()
         {
-            // Try to parse inputs for hours worked, salary, state tax rate, and federal tax rate
             if (!decimal.TryParse(txtHours.Text, out var hoursWorked) ||
-                !decimal.TryParse(txtSalary.Text, out var salary) ||
-                !decimal.TryParse(txtStateTax.Text, out var stateTaxRate) ||
-                !decimal.TryParse(txtFederalTax.Text, out var federalTaxRate))
+                !decimal.TryParse(txtSalary.Text, out var salary))
             {
-                // Clear the total tax and after-tax fields if input is invalid
-                txtTotalTax.Clear();
-                txtTotalAfterTax.Clear();
-                return; // Exit early if any input is invalid
+                ClearCalculatedFields();
+                return;
             }
 
-            // Calculate total gross pay based on hours worked and salary
+            decimal stateTaxRate = decimal.TryParse(txtStateTax.Text, out var parsedStateTax) ? parsedStateTax : 5;
+            decimal federalTaxRate = decimal.TryParse(txtFederalTax.Text, out var parsedFederalTax) ? parsedFederalTax : 15;
+
             decimal totalGrossPay = hoursWorked * salary;
 
-            // Calculate state and federal taxes based on the gross pay
             decimal totalStateTax = totalGrossPay * (stateTaxRate / 100);
             decimal totalFederalTax = totalGrossPay * (federalTaxRate / 100);
             decimal totalTaxes = totalStateTax + totalFederalTax;
 
-            // Calculate total after tax
             decimal totalAfterTax = totalGrossPay - totalTaxes;
 
-            // Display results formatted as currency
+            
             txtTotalTax.Text = totalTaxes.ToString("C");
             txtTotalAfterTax.Text = totalAfterTax.ToString("C");
+
+           
+            txtYtdState.Text = totalStateTax.ToString("C");
+            txtYtdFederal.Text = totalFederalTax.ToString("C");
+            txtYtdTotalTax.Text = totalTaxes.ToString("C");
+            txtYtdTotal.Text = totalAfterTax.ToString("C");
         }
+
+        private void ClearCalculatedFields()
+        {
+            txtTotalTax.Clear();
+            txtTotalAfterTax.Clear();
+            txtYtdState.Clear();
+            txtYtdFederal.Clear();
+            txtYtdTotalTax.Clear();
+            txtYtdTotal.Clear();
+        }
+
         private void ClearInputs()
         {
             txtEmployeeID.Clear();
@@ -121,12 +146,7 @@ namespace Part2Payroll
             txtSalary.Clear();
             txtStateTax.Clear();
             txtFederalTax.Clear();
-            txtTotalTax.Clear();
-            txtTotalAfterTax.Clear();
-            txtYtdState.Clear();
-            txtYtdFederal.Clear();
-            txtYtdTotalTax.Clear();
-            txtYtdTotal.Clear();
+            ClearCalculatedFields();
         }
 
         private bool ValidateInputs()
@@ -136,9 +156,55 @@ namespace Part2Payroll
                    decimal.TryParse(txtHours.Text, out _) &&
                    decimal.TryParse(txtSalary.Text, out _) &&
                    decimal.TryParse(txtStateTax.Text, out _) &&
-                   decimal.TryParse(txtFederalTax.Text, out _) &&
-                   decimal.TryParse(txtYtdState.Text, out _) &&
-                   decimal.TryParse(txtYtdFederal.Text, out _);
+                   decimal.TryParse(txtFederalTax.Text, out _);
+        }
+
+        private bool TryParseTotals(out decimal totalAfterTax, out decimal totalTax)
+        {
+            if (!decimal.TryParse(txtTotalAfterTax.Text, NumberStyles.Currency, CultureInfo.CurrentCulture, out totalAfterTax))
+            {
+                MessageBox.Show("Total After Tax is not in a valid format.", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                totalTax = 0;
+                return false;
+            }
+
+            if (!decimal.TryParse(txtTotalTax.Text, NumberStyles.Currency, CultureInfo.CurrentCulture, out totalTax))
+            {
+                MessageBox.Show("Total Tax is not in a valid format.", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            return true;
+        }
+
+        private void UpdateExistingEmployee(DataRow existingRow, decimal totalAfterTax, decimal totalTax)
+        {
+            existingRow["Name"] = txtEmployeeName.Text;
+            existingRow["HoursWorked"] = decimal.Parse(txtHours.Text);
+
+            decimal existingYtdState = decimal.Parse(existingRow["YtdState"].ToString());
+            decimal existingYtdFederal = decimal.Parse(existingRow["YtdFederal"].ToString());
+
+            existingRow["YtdState"] = existingYtdState + (totalTax * (decimal.Parse(txtStateTax.Text) / 100));
+            existingRow["YtdFederal"] = existingYtdFederal + (totalTax * (decimal.Parse(txtFederalTax.Text) / 100));
+
+            existingRow["YtdTaxTotal"] = decimal.Parse(existingRow["YtdTaxTotal"].ToString()) + totalTax;
+            existingRow["YtdTotal"] = decimal.Parse(existingRow["YtdTotal"].ToString()) + totalAfterTax;
+        }
+
+        private void AddNewEmployee(decimal totalAfterTax, decimal totalTax)
+        {
+            table.Rows.Add(
+                txtEmployeeID.Text,
+                txtEmployeeName.Text,
+                decimal.Parse(txtHours.Text),
+                decimal.Parse(txtSalary.Text),
+                decimal.Parse(txtStateTax.Text),
+                decimal.Parse(txtFederalTax.Text),
+                0,  
+                0,
+                totalTax,
+                totalAfterTax);
         }
 
         private void LoadDataIntoInputs(int index)
@@ -151,8 +217,16 @@ namespace Part2Payroll
             txtFederalTax.Text = table.Rows[index]["FederalTaxRate"].ToString();
             txtYtdState.Text = table.Rows[index]["YtdState"].ToString();
             txtYtdFederal.Text = table.Rows[index]["YtdFederal"].ToString();
-            txtTotalTax.Text = table.Rows[index]["YtdTaxTotal"].ToString();
-            txtTotalAfterTax.Text = table.Rows[index]["YtdTotal"].ToString();
+            txtYtdTotalTax.Text = table.Rows[index]["YtdTaxTotal"].ToString();
+            txtYtdTotal.Text = table.Rows[index]["YtdTotal"].ToString();
+
+            ClearAdditionalFields();
+        }
+        private void bttCalculate_Click(object sender, EventArgs e)
+        {
+            CalculateTotal();
         }
     }
+        
+    
 }

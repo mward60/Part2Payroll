@@ -209,6 +209,7 @@
             this.txtStateTax.Name = "txtStateTax";
             this.txtStateTax.Size = new System.Drawing.Size(100, 22);
             this.txtStateTax.TabIndex = 17;
+            this.txtStateTax.TextChanged += new System.EventHandler(this.txtFederalTax_TextChanged);
             // 
             // txtFederalTax
             // 
@@ -216,6 +217,7 @@
             this.txtFederalTax.Name = "txtFederalTax";
             this.txtFederalTax.Size = new System.Drawing.Size(100, 22);
             this.txtFederalTax.TabIndex = 18;
+            this.txtFederalTax.TextChanged += new System.EventHandler(this.txtStateTax_TextChanged);
             // 
             // label8
             // 
@@ -321,6 +323,7 @@
             this.bttCalculate.TabIndex = 31;
             this.bttCalculate.Text = "Calculate";
             this.bttCalculate.UseVisualStyleBackColor = true;
+            this.bttCalculate.Click += new System.EventHandler(this.bttCalculate_Click);
             // 
             // Form1
             // 
