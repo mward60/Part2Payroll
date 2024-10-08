@@ -14,7 +14,20 @@ namespace Part2Payroll
         {
             InitializeComponent();
         }
-
+private void dataGridView1_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+    {
+        if (dataGridView1.Columns[e.ColumnIndex].Name == "YtdState" ||
+            dataGridView1.Columns[e.ColumnIndex].Name == "YtdFederal" ||
+            dataGridView1.Columns[e.ColumnIndex].Name == "YtdTaxTotal" ||
+            dataGridView1.Columns[e.ColumnIndex].Name == "YtdTotal")
+        {
+            if (e.Value != null)
+            {
+                e.Value = string.Format(CultureInfo.CurrentCulture, "{0:C}", e.Value);
+                e.FormattingApplied = true;
+            }
+        }
+    }
         private void Form1_Load(object sender, EventArgs e)
         {
             table = new DataTable();
@@ -29,12 +42,28 @@ namespace Part2Payroll
             table.Columns.Add("YtdTaxTotal", typeof(decimal));
             table.Columns.Add("YtdTotal", typeof(decimal));
             dataGridView1.DataSource = table;
+            dataGridView1.DataSource = table;
+            dataGridView1.CellFormatting += dataGridView1_CellFormatting;
         }
 
         private void bttNew_Click(object sender, EventArgs e)
         {
             ClearInputs();
         }
+
+        
+        private void bttView_Click(object sender, EventArgs e)
+        {
+            if (dataGridView1.CurrentCell == null || dataGridView1.CurrentCell.RowIndex < 0)
+            {
+                MessageBox.Show("Please select an employee to view.", "Selection Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            int index = dataGridView1.CurrentCell.RowIndex;
+            LoadDataIntoInputs(index);
+        }
+
 
         private void bttSave_Click(object sender, EventArgs e)
         {
@@ -55,34 +84,16 @@ namespace Part2Payroll
             if (existingRow != null)
             {
                 UpdateExistingEmployee(existingRow, totalAfterTax, totalTax);
+                MessageBox.Show("Employee updated successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
                 AddNewEmployee(totalAfterTax, totalTax);
+                MessageBox.Show("Employee added successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
 
             ClearInputs();
         }
-
-        private void bttView_Click(object sender, EventArgs e)
-        {
-            if (dataGridView1.CurrentCell == null || dataGridView1.CurrentCell.RowIndex < 0)
-            {
-                MessageBox.Show("Please select an employee to view.", "Selection Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            int index = dataGridView1.CurrentCell.RowIndex;
-            LoadDataIntoInputs(index);
-            ClearAdditionalFields();
-        }
-
-        private void ClearAdditionalFields()
-        {
-            txtTotalTax.Clear();
-            txtTotalAfterTax.Clear();
-        }
-
         private void bttDelete_Click(object sender, EventArgs e)
         {
             int index = dataGridView1.CurrentCell.RowIndex;
@@ -91,7 +102,29 @@ namespace Part2Payroll
                 table.Rows[index].Delete();
             }
         }
+        private void AddNewEmployee(decimal totalAfterTax, decimal totalTax)
+        {
+            decimal hoursWorked = decimal.Parse(txtHours.Text);
+            decimal salary = decimal.Parse(txtSalary.Text);
+            decimal stateTaxRate = decimal.Parse(txtStateTax.Text) / 100;
+            decimal federalTaxRate = decimal.Parse(txtFederalTax.Text) / 100;
 
+            decimal totalGrossPay = hoursWorked * salary;
+            decimal totalStateTax = totalGrossPay * stateTaxRate;
+            decimal totalFederalTax = totalGrossPay * federalTaxRate;
+
+            table.Rows.Add(
+                txtEmployeeID.Text,
+                txtEmployeeName.Text,
+                hoursWorked,
+                salary,
+                stateTaxRate * 100,
+                federalTaxRate * 100,
+                totalStateTax, 
+                totalFederalTax,
+                totalTax,
+                totalAfterTax);
+        }
         private void txtHours_TextChanged(object sender, EventArgs e) => CalculateTotal();
         private void txtSalary_TextChanged(object sender, EventArgs e) => CalculateTotal();
         private void txtStateTax_TextChanged(object sender, EventArgs e) => CalculateTotal();
@@ -106,26 +139,33 @@ namespace Part2Payroll
                 return;
             }
 
-            decimal stateTaxRate = decimal.TryParse(txtStateTax.Text, out var parsedStateTax) ? parsedStateTax : 5;
-            decimal federalTaxRate = decimal.TryParse(txtFederalTax.Text, out var parsedFederalTax) ? parsedFederalTax : 15;
+            decimal stateTaxRate = decimal.TryParse(txtStateTax.Text, out var parsedStateTax) ? parsedStateTax / 100 : 0.05m;
+            decimal federalTaxRate = decimal.TryParse(txtFederalTax.Text, out var parsedFederalTax) ? parsedFederalTax / 100 : 0.15m; 
 
             decimal totalGrossPay = hoursWorked * salary;
 
-            decimal totalStateTax = totalGrossPay * (stateTaxRate / 100);
-            decimal totalFederalTax = totalGrossPay * (federalTaxRate / 100);
+            decimal totalStateTax = totalGrossPay * stateTaxRate;
+            decimal totalFederalTax = totalGrossPay * federalTaxRate;
             decimal totalTaxes = totalStateTax + totalFederalTax;
 
             decimal totalAfterTax = totalGrossPay - totalTaxes;
 
-            
-            txtTotalTax.Text = totalTaxes.ToString("C");
-            txtTotalAfterTax.Text = totalAfterTax.ToString("C");
+            txtTotalTax.Text = totalTaxes.ToString("C", CultureInfo.CurrentCulture);
+            txtTotalAfterTax.Text = totalAfterTax.ToString("C", CultureInfo.CurrentCulture);
 
+            txtYtdState.Text = totalStateTax.ToString("C", CultureInfo.CurrentCulture);
+            txtYtdFederal.Text = totalFederalTax.ToString("C", CultureInfo.CurrentCulture);
+            txtYtdTotalTax.Text = totalTaxes.ToString("C", CultureInfo.CurrentCulture);
+            txtYtdTotal.Text = totalAfterTax.ToString("C", CultureInfo.CurrentCulture);
+        }
+
+
+
+
+
+        private void RefreshTotals()
+        {
            
-            txtYtdState.Text = totalStateTax.ToString("C");
-            txtYtdFederal.Text = totalFederalTax.ToString("C");
-            txtYtdTotalTax.Text = totalTaxes.ToString("C");
-            txtYtdTotal.Text = totalAfterTax.ToString("C");
         }
 
         private void ClearCalculatedFields()
@@ -181,31 +221,27 @@ namespace Part2Payroll
         {
             existingRow["Name"] = txtEmployeeName.Text;
             existingRow["HoursWorked"] = decimal.Parse(txtHours.Text);
+            existingRow["Salary"] = decimal.Parse(txtSalary.Text);
+
+            decimal stateTaxRate = decimal.Parse(txtStateTax.Text) / 100;
+            decimal federalTaxRate = decimal.Parse(txtFederalTax.Text) / 100;
+            decimal hoursWorked = decimal.Parse(txtHours.Text);
+            decimal salary = decimal.Parse(txtSalary.Text);
+
+            decimal totalGrossPay = hoursWorked * salary;
+            decimal totalStateTax = totalGrossPay * stateTaxRate;
+            decimal totalFederalTax = totalGrossPay * federalTaxRate;
 
             decimal existingYtdState = decimal.Parse(existingRow["YtdState"].ToString());
             decimal existingYtdFederal = decimal.Parse(existingRow["YtdFederal"].ToString());
 
-            existingRow["YtdState"] = existingYtdState + (totalTax * (decimal.Parse(txtStateTax.Text) / 100));
-            existingRow["YtdFederal"] = existingYtdFederal + (totalTax * (decimal.Parse(txtFederalTax.Text) / 100));
+            existingRow["YtdState"] = existingYtdState + totalStateTax;
+            existingRow["YtdFederal"] = existingYtdFederal + totalFederalTax;
 
             existingRow["YtdTaxTotal"] = decimal.Parse(existingRow["YtdTaxTotal"].ToString()) + totalTax;
             existingRow["YtdTotal"] = decimal.Parse(existingRow["YtdTotal"].ToString()) + totalAfterTax;
         }
 
-        private void AddNewEmployee(decimal totalAfterTax, decimal totalTax)
-        {
-            table.Rows.Add(
-                txtEmployeeID.Text,
-                txtEmployeeName.Text,
-                decimal.Parse(txtHours.Text),
-                decimal.Parse(txtSalary.Text),
-                decimal.Parse(txtStateTax.Text),
-                decimal.Parse(txtFederalTax.Text),
-                0,  
-                0,
-                totalTax,
-                totalAfterTax);
-        }
 
         private void LoadDataIntoInputs(int index)
         {
@@ -215,18 +251,18 @@ namespace Part2Payroll
             txtSalary.Text = table.Rows[index]["Salary"].ToString();
             txtStateTax.Text = table.Rows[index]["StateTaxRate"].ToString();
             txtFederalTax.Text = table.Rows[index]["FederalTaxRate"].ToString();
-            txtYtdState.Text = table.Rows[index]["YtdState"].ToString();
-            txtYtdFederal.Text = table.Rows[index]["YtdFederal"].ToString();
-            txtYtdTotalTax.Text = table.Rows[index]["YtdTaxTotal"].ToString();
-            txtYtdTotal.Text = table.Rows[index]["YtdTotal"].ToString();
 
-            ClearAdditionalFields();
+            // Format YTD values as currency
+            txtYtdState.Text = decimal.Parse(table.Rows[index]["YtdState"].ToString()).ToString("C", CultureInfo.CurrentCulture);
+            txtYtdFederal.Text = decimal.Parse(table.Rows[index]["YtdFederal"].ToString()).ToString("C", CultureInfo.CurrentCulture);
+            txtYtdTotalTax.Text = decimal.Parse(table.Rows[index]["YtdTaxTotal"].ToString()).ToString("C", CultureInfo.CurrentCulture);
+            txtYtdTotal.Text = decimal.Parse(table.Rows[index]["YtdTotal"].ToString()).ToString("C", CultureInfo.CurrentCulture);
         }
         private void bttCalculate_Click(object sender, EventArgs e)
         {
             CalculateTotal();
         }
     }
-        
     
+
 }
