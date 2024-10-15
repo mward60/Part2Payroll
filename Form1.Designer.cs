@@ -82,6 +82,7 @@
             // 
             // txtEmployeeID
             // 
+            this.txtEmployeeID.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
             this.txtEmployeeID.Location = new System.Drawing.Point(129, 37);
             this.txtEmployeeID.Name = "txtEmployeeID";
             this.txtEmployeeID.Size = new System.Drawing.Size(142, 22);
@@ -329,6 +330,8 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.SystemColors.InactiveCaption;
+            this.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
             this.ClientSize = new System.Drawing.Size(800, 450);
             this.Controls.Add(this.bttCalculate);
             this.Controls.Add(this.txtYtdTotal);
@@ -361,8 +364,11 @@
             this.Controls.Add(this.txtEmployeeID);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
+            this.ForeColor = System.Drawing.Color.DarkSlateBlue;
+            this.ImeMode = System.Windows.Forms.ImeMode.Off;
             this.Name = "Form1";
-            this.Text = "Form1";
+            this.ShowIcon = false;
+            this.Text = "PayRoll";
             this.Load += new System.EventHandler(this.Form1_Load);
             this.TextChanged += new System.EventHandler(this.txtHours_TextChanged);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
